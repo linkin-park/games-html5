@@ -1,0 +1,263 @@
+<html>
+	<head>
+		<title>Break Out</title>
+	</head>
+	<body>
+	<canvas id="breakout" width="700" height="500"></canvas>
+	<script>
+		app = document.getElementById('breakout');
+		var nbricks=3;
+		ctxt2d = app.getContext('2d');
+		var brickWidth=50,brickHeight=20;
+		var frames = 50;interval = 1000;
+		var paddleX=0,paddleY=app.height-15,paddleW=65,paddleH=10;
+		var brickRow=13,brickCol=5;
+		var ballPosX=paddleX+20,ballPosY=paddleY+5,ballradius=5, speedballPosX=4,speedballPosY=2;
+		var intervalCall = setInterval(gameEngine,interval/frames)
+		var bricksColl=[] , hitBricksColl=[]; 
+		var colorBox = ['#B8860B','green','red','orange'];
+		var feature = ['bomb','bullet','',''];
+		var score=0000,lives=3,level=0;
+		//var currentWeapon = defaultWeapon = new WeaponCraft("1","paddle",paddleX/2,paddleY,10,10);
+		var paddleWeaponExist = true;
+		var currentWeaponType = "bullet"
+		var currentWeaponClassify = "paddle"
+		var speedWeaponX=0,speedWeaponY = 10,powerupxy = 2
+		var listOfWeaponTypeShot = [];
+		
+		brickbuilder();
+		
+		function gameEngine(){
+			ctxt2d.fillStyle='grey';
+			ctxt2d.fillRect(0,0,app.width,app.height);
+			//brickbuilder();
+			brickdestroyer();
+			balldirection(); brickBreakOnShootByPaddle();
+			drawBall();
+			weaponShot();
+			drawWeaponShot();
+			paddleMove();
+			scoreDisplay();
+		}
+		
+		function scoreDisplay(){
+					if(lives<=0 || brickCol*brickRow==hitBricksColl.length){
+						window.removeEventListener("click",eventClickListenerAdder,false);
+						clearInterval(intervalCall)
+						ctxt2d.fillStyle='grey'
+						ctxt2d.fillRect(0,0,app.width,app.height);
+					}else{
+						ctxt2d.fillStyle='White';
+						ctxt2d.font='16pt Arial'
+					
+						ctxt2d.fillText("Life "+lives,(app.width-90),200);
+					}
+					ctxt2d.fillStyle='white';
+					ctxt2d.fillText("Score "+score, 20, 200 );
+		}
+		
+		function brickbuilder(){//onstart
+		for(var j=1;j<=brickCol;j++){
+			var tempColor = colorMagic();
+			for(var i=1;i<=brickRow;i++){
+			   br1 = new Brick((brickWidth*(i-1)),(brickHeight*(j-1)),i+15,j,feature[parseInt(Math.random()*2)]);/*prevX,prevY,currX,currY <currX=i since additional space> changed*/
+			   bricksColl.push({i:i,j:j,brick:br1,color:tempColor});// ------------------pending
+			   drawBrick(br1,br1.color);
+			  }
+			}
+		}
+		
+		function brickdestroyer(){
+			for(var i=0;i<bricksColl.length;i++){
+				if(hitBricksColl.indexOf(bricksColl[i])===-1){
+					drawBrick(bricksColl[i].brick,bricksColl[i].color);
+			   }
+			}
+		}
+	
+		function balldirection(){//ball change direction when it hit the x or y of the app
+			if((ballPosX+ballradius)>=app.width||((ballPosX-ballradius)<=0 && speedballPosX<0) ){
+				speedballPosX*=(-1);
+			}
+			if((ballPosY+ballradius)>=app.height||((ballPosY-ballradius)<=0 && speedballPosY<0) ){
+				speedballPosY*=(-1);
+				{//lives measure
+					if((ballPosY+ballradius)>=app.height)
+					lives--;
+				}	
+			}
+			ballbrickHitNDirection();
+		}
+		
+		function ballbrickHitNDirection(){
+			for(var i=0;i<bricksColl.length;i++){
+				var hit =false;
+				var b1 = bricksColl[i].brick;
+				if(  ((ballPosX+ballradius >= b1.prevX+b1.currX && ballPosX+ballradius <= b1.prevX+b1.currX+brickWidth 
+					&& ballPosY+ballradius<= b1.prevY+b1.currY+brickHeight && ballPosY+ballradius >= b1.prevY+b1.currY)
+					||
+					(ballPosX-ballradius >= b1.prevX+b1.currX && ballPosX-ballradius <= b1.prevX+b1.currX+brickWidth 
+					&& ballPosY-ballradius<= b1.prevY+b1.currY+brickHeight && ballPosY-ballradius >= b1.prevY+b1.currY) )
+					&& hitBricksColl.indexOf(bricksColl[i])===-1)
+				{
+					if(ballPosX+ballradius >= b1.prevX+b1.currX && ballPosX+ballradius <= b1.prevX+b1.currX+brickWidth )
+					speedballPosY*=(-1);
+					else if(ballPosY+ballradius<= b1.prevY+b1.currY+brickHeight && ballPosY+ballradius >= b1.prevY+b1.currY)
+					speedballPosY*=(-1);
+					hit = true;
+					hitBricksColl.push(bricksColl[i]);//brick added
+					drawFeatureWithDirection(bricksColl[i].brick);//If features are added for brick <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+					score+=(bricksColl[i].brick.color=='red'?100:50);//scoreboard
+					break;
+				}
+			}
+		}
+	
+		function drawBall(){
+			ctxt2d.beginPath();		
+				x = ballPosX+=speedballPosX//+((hitBricksColl.length>=(brickCol*brickRow)/2)?(speedballPosX<0)?-powerupxy:powerupxy:0); //changed , powerup if greater than half 
+				y= ballPosY+=speedballPosY//+((hitBricksColl.length>=(brickCol*brickRow)/2)?(speedballPosY<0)?-powerupxy:powerupxy:0); //powerup if greater than half 
+			ctxt2d.arc(x,y,ballradius,0,Math.PI*2,true);
+			ctxt2d.fillStyle='red'
+			ctxt2d.fill();
+			ctxt2d.closePath();
+		}
+		
+		function paddleMove(){
+			ctxt2d.fillStyle='yellow'
+			ctxt2d.fillRect(paddleX,paddleY,paddleW,paddleH);//x, y, width, height
+				window.addEventListener("mousemove",events,false);
+				if(ballPosY+ballradius>=paddleY && speedballPosY>0 && 
+					((ballPosX+ballradius >= paddleX && ballPosX+ballradius<=paddleX+paddleW) 
+					 || (ballPosX-ballradius==paddleX+paddleW) ) ){
+							speedballPosY*=-1;
+					}
+		}
+		
+		function events(evt){
+				if(paddleX>=0 &&  evt.clientX+paddleW<=app.width){
+					paddleX=evt.clientX;
+				}
+		}
+		
+		function colorMagic(){
+			return colorBox[parseInt(Math.random()*colorBox.length)]
+		}
+		
+		function drawBrick(b,color){//Need to alter
+			ctxt2d.fillStyle=color;
+			b.score=(color=='red' || color =='green')?200:100;
+			ctxt2d.fillRect(b.prevX+b.currX,b.prevY+b.currY,brickWidth,brickHeight);
+		}
+		
+		function Brick(prevX,prevY,currX,currY,feature){
+			this.prevX=prevX;
+			this.prevY=prevY;
+			this.currX=currX;
+			this.currY=currY;
+			this.feature=feature;
+		}
+		
+		function drawFeatureWithDirection(brick){ // on breaking the brick with shoot / ball
+			if(brick.feature!='undefined' && brick.feature!=null){
+					if(brick.feature == 'bomb'){
+						 var weaponObjectExist = false
+						 for(var i = 0;i<listOfWeaponTypeShot.length;i++){
+							var currentShot = listOfWeaponTypeShot[i];
+							if(currentShot.hit == 1){
+								currentShot.hit = 0;
+								currentShot.x = brick.prevX+brick.currX;
+								currentShot.y = brick.prevY+brick.currY;
+								currentShot.type = brick.feature;
+								currentShot.classify='brick'
+								break;
+							}
+						 }
+						 if(!weaponObjectExist){
+							listOfWeaponTypeShot.push(new WeaponCraft(brick.feature,'brick',brick.prevX+brick.currX,brick.prevY+brick.currY,speedWeaponX,speedWeaponY));
+						 }
+					}
+					//ctxt2d.fillStyle('red');
+					//ctxt2d.fillRect(brick.prevX+brick.currX,brick.prevY+brick.currY,5,5);
+			}
+		}
+		
+		function drawWeaponShot(){
+			for(var i = 0;i<listOfWeaponTypeShot.length;i++){
+				var currentShot = listOfWeaponTypeShot[i];
+				if(currentShot.hit==0 && currentShot.classify==='paddle'){
+					currentShot.y-=currentShot.speedWeaponY;
+					ctxt2d.fillStyle = "yellow";
+					ctxt2d.fillRect(currentShot.x,currentShot.y,2,5);//x,yw,h
+				}else if(currentShot.hit==0 && currentShot.classify==='brick' && currentShot.type==='bomb'){
+					currentShot.y+=currentShot.speedWeaponY;
+					ctxt2d.fillStyle = "red";
+					ctxt2d.fillRect(currentShot.x,currentShot.y,15,5);//x,yw,h
+				}
+			}
+		}
+		
+		
+		var eventClickListenerAdder = function(){
+		    var weaponObjectExist = false
+		    for(var i = 0;i<listOfWeaponTypeShot.length;i++){ // reuse if existing already!
+			var currentShot = listOfWeaponTypeShot[i];
+			    if(currentShot.y<=0 || currentShot.hit == 1){
+				  currentShot.x = (paddleX+paddleW/2);
+				  currentShot.y =  app.height-paddleH;
+				  currentShot.type = 'bullet';
+				  currentShot.classify='paddle'
+				  weaponObjectExist = true
+				  currentShot.hit=0;
+				  break;
+				}
+				//console.log(listOfWeaponTypeShot.length);
+		    }
+					if(!weaponObjectExist && paddleWeaponExist){ // if false then create new Object
+					listOfWeaponTypeShot.push(new WeaponCraft(currentWeaponType,currentWeaponClassify,(paddleX+paddleW/2),app.height-paddleH,speedWeaponX,speedWeaponY));
+				}
+		}
+		
+		function weaponShot(){
+		   window.addEventListener("click",eventClickListenerAdder);
+		}
+		
+		//Weapons
+		/**type == Bullet , Rocket , RIT **/
+		/**classify == 'paddle' or 'brk' **/
+		
+		function WeaponCraft(type,classify,x,y,speedWeaponX,speedWeaponY){
+			this.type = type;
+			this.classify = classify;
+			this.x = x;
+			this.y = y;
+			this.speedWeaponX = speedWeaponX;			
+			this.speedWeaponY = speedWeaponY;
+			this.hit=0;
+		}
+		
+			
+		function brickBreakOnShootByPaddle(){
+			if(paddleWeaponExist){
+			for(var j=0;j<bricksColl.length;j++){
+				if(hitBricksColl.indexOf(bricksColl[j])===-1){//brickBreakOnShootByPaddle , for shooting
+					var brick = bricksColl[j].brick, color = bricksColl[j].color;
+					for(var i=0;i<listOfWeaponTypeShot.length;i++){
+						var tempPaddleWeaponShot = listOfWeaponTypeShot[i];
+					 if(tempPaddleWeaponShot.hit==0){// only for non hit
+								if(tempPaddleWeaponShot.x+2>=brick.currX+brick.prevX && tempPaddleWeaponShot.x+2<=brick.currX+brick.prevX+brickWidth &&
+									tempPaddleWeaponShot.y+5>=brick.currY+brick.prevY && tempPaddleWeaponShot.y+5<=brick.currY+brick.prevY+brickHeight ){
+									tempPaddleWeaponShot.hit=1;
+									score+=(color=='red'?100:50);//scoreboard
+									hitBricksColl.push(bricksColl[j]);
+								} 
+							}
+						}		
+					}
+				}
+			}	
+	    }
+		
+	</script/>
+	<body>
+</html>
