@@ -3,7 +3,7 @@
 This Repo is primarly dedicated for building games (oldie games) from arcade to racing game in HTML 5.
 https://en.wikipedia.org/wiki/HTML5
 
-you can visit site 
+you can visit site
 http://linkin-park.github.io/games-html5/ping-pong-ai.html
 
 http://linkin-park.github.io/games-html5/breakout.html
